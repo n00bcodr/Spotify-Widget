@@ -7,7 +7,7 @@
     background-color: var(--main-color);
     color: var(--text-color);
     font-family: Helvetica, Arial;
-    font-size: 4vmin; /* Base font size */
+    font-size: 4vmin;
     border-radius: var(--border-radius);
     filter: opacity(0.95);
     width: 100%;
@@ -25,7 +25,7 @@
       position: absolute;
       top: 1em;
       right: 1em;
-      opacity: 0.8;
+      opacity: 0.9;
     "
   />
 
@@ -37,21 +37,19 @@
       />
     </td>
     <td width="80%">
+      <div id="player-status" style="margin: 1em; font-size: 1.2em;"></div>
       <div style="margin: 1em;">
-        <div id="player-status" style="margin: 1em 0; font-size: 1.2em;"></div>
-        <div id="player-song" style="font-size: 1.5em;"></div>
-        <div id="player-artist" style="font-size: 1em; margin-bottom: 1em;"></div>
+        <!-- Song Title as a Link -->
+        <a id="player-song" href="" target="_blank" style="display: block; font-size: 1.5em; color: var(--text-color); text-decoration: underline; margin-bottom: 0.5em;"></a>
 
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5em;">
-          <a id="player-song-link" href="" target="_blank" style="color: var(--text-color); text-decoration: none; border: 1px solid var(--text-color); border-radius: var(--border-radius); padding: 0.2em;">🎵 Song</a>
-          <a id="player-artist-link" href="" target="_blank" style="color: var(--text-color); text-decoration: none; border: 1px solid var(--text-color); border-radius: var(--border-radius); padding: 0.2em;">👤 Artist</a>
-          <a id="player-album-link" href="" target="_blank" style="color: var(--text-color); text-decoration: none; border: 1px solid var(--text-color); border-radius: var(--border-radius); padding: 0.2em;">💽 Album</a>
+        <!-- Artist and Album Pills with Extra Space -->
+        <div id="pill-container" style="display: none; gap: 0.5em; flex-wrap: wrap; margin-top: 0.5em;">
+          <a id="player-artist-pill" href="" target="_blank" style="color: var(--text-color); background: #333; padding: 0.5em 1em; border-radius: 9999px; text-decoration: none;"></a>
+          <a id="player-album-pill" href="" target="_blank" style="color: var(--text-color); background: #333; padding: 0.5em 1em; border-radius: 9999px; text-decoration: none;"></a>
         </div>
-
-        <div id="player-time" style="position: relative; float: right; top: -1.5em; font-weight: bold; font-size: 1em;"></div>
-
+        <div id="player-time" style="position: relative; float: right; top: -0.5em; font-weight: bold; font-size: 1em;"></div>
         <!-- Spotify-themed progress bar -->
-        <div id="player-progress-back" style="background-color: #333; border-radius: 20px; height: 1em; margin-top: 1em; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);">
+        <div id="player-progress-back" style="background-color: #333; border-radius: 20px; height: 1em; margin-top: 1.5em; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); display: none;">
           <div id="player-progress" style="background: linear-gradient(90deg, #1db954, #1ed760); height: 100%; border-radius: 20px; transition: width 0.3s ease;"></div>
         </div>
       </div>
@@ -59,6 +57,28 @@
   </tr>
   <div id="player-background" class="background" style="left: 0; right: 0; top: 0; bottom: 0; z-index: -10; background-position: center center; background-size: 100%; filter: blur(2em); position: absolute; transition: background-image 0.5s ease-in;"></div>
 </table>
+
+<!-- Responsive style for mobile devices -->
+<style>
+  @media (max-width: 768px) {
+    #player tr, #player td {
+      display: block;
+      width: 100%;
+    }
+    #player-album-art {
+      max-height: 30vmin;
+    }
+    #player div, #player a {
+      font-size: 3vmin;
+    }
+    #player-time {
+      position: relative;
+      float: none;
+      text-align: center;
+      margin-top: 0.5em;
+    }
+  }
+</style>
 
 <script>
   const serviceHost = "https://spotify.thanuj-usp.workers.dev";
@@ -71,41 +91,47 @@
       .then(response => response.json())
       .then(data => {
         if (data.hasOwnProperty("ERROR")) {
-          document.getElementById("player-song").innerHTML = `${spotifyUser} isn't playing anything.`;
-          document.getElementById("player-artist").innerHTML = "";
-          clearInterval(progressInterval);  // Clear interval if no song is playing
+          document.getElementById("player-status").innerHTML = `${spotifyUser} isn't playing anything.`;
+          document.getElementById("pill-container").style.display = "none";
+          document.getElementById("player-progress-back").style.display = "none";
+          clearInterval(progressInterval);
           return;
-        }
-
-        // Refresh the widget if the song changes
-        if (data.item.id !== previousSongId) {
-          previousSongId = data.item.id;  // Update song ID to current track
-          clearInterval(progressInterval);  // Clear previous interval
         }
 
         songData = data;
         document.getElementById("player-status").innerHTML = data.is_playing ? `▶️ ${spotifyUser} is now playing...` : `⏸ ${spotifyUser} has paused.`;
-        document.getElementById("player-song").textContent = data.item.name;
-        document.getElementById("player-artist").textContent = data.item.artists[0].name;
 
+        // Update song title link
+        const songLink = document.getElementById("player-song");
+        songLink.href = data.item.external_urls.spotify;
+        songLink.textContent = data.item.name;
+
+        // Update artist and album pills
+        const artistLink = document.getElementById("player-artist-pill");
+        artistLink.href = data.item.artists[0].external_urls.spotify;
+        artistLink.textContent = `👤 ${data.item.artists[0].name}`;
+
+        const albumLink = document.getElementById("player-album-pill");
+        albumLink.href = data.item.album.external_urls.spotify;
+        albumLink.textContent = `💽 ${data.item.album.name}`;
+
+        // Display the pills and progress bar
+        document.getElementById("pill-container").style.display = "flex";
+        document.getElementById("player-progress-back").style.display = "block";
+
+        // Update album art and background
         const albumArt = data.item.album.images[1].url;
         document.getElementById("player-album-art").src = albumArt;
         document.getElementById("player-background").style.backgroundImage = `url(${albumArt})`;
 
-        document.getElementById("player-song-link").href = data.item.external_urls.spotify;
-        document.getElementById("player-artist-link").href = data.item.artists[0].external_urls.spotify;
-        document.getElementById("player-album-link").href = data.item.album.external_urls.spotify;
-
-        // Update the initial progress bar width
+        // Initial progress bar width
         updateProgress();
 
-        // Clear any existing interval before setting a new one
         clearInterval(progressInterval);
 
-        // Start progress updating only if the song is playing
         if (data.is_playing) {
           progressInterval = setInterval(() => {
-            songData.progress_ms += 1000; // Increment progress by 1 second
+            songData.progress_ms += 1000;
             updateProgress();
           }, 1000);
         }
@@ -123,14 +149,12 @@
     document.getElementById("player-time").textContent = `${currentTime} / ${totalTime}`;
     document.getElementById("player-progress").style.width = `${(progressSeconds / totalSeconds) * 100}%`;
 
-    // Restart player update if song has ended
     if (progressSeconds >= totalSeconds) {
       clearInterval(progressInterval);
       updatePlayer();
     }
   }
 
-  // Initial player load and refresh every 30 seconds to keep track of new songs
   updatePlayer();
   setInterval(updatePlayer, 30000);
 </script>
