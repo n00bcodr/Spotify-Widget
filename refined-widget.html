@@ -106,15 +106,15 @@
       .then(data => {
         if (data.hasOwnProperty("ERROR")) {
           document.getElementById("player-status").innerHTML = `I am not listening to anything right now!`;
+          document.getElementById("player-status").style.textAlign = "left";
           document.getElementById("pill-container").style.display = "none";
           document.getElementById("player-progress-back").style.display = "none";
-
           clearInterval(progressInterval);
           return;
         }
 
         songData = data;
-        document.getElementById("player-status").innerHTML = data.is_playing ? `▶️ ${spotifyUser} is now playing...` : `⏸ ${spotifyUser} has paused.`;
+        document.getElementById("player-status").innerHTML = data.is_playing ? `▶️ ${spotifyUser} is now listening to...` : `⏸ ${spotifyUser} has paused.`;
 
         // Update song title link
         const songLink = document.getElementById("player-song");
@@ -171,5 +171,5 @@
   }
 
   updatePlayer();
-  setInterval(updatePlayer, 30000);
+  setInterval(updatePlayer, 10000);
 </script>
