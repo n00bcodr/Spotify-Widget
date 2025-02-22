@@ -1,43 +1,10 @@
-<table
-  id="player"
-  style="
-    --main-color: #111;
-    --text-color: #fff;
-    --border-radius: 50px;
-    background-color: var(--main-color);
-    color: var(--text-color);
-    font-family: 'ubuntu', Arial, sans-serif;
-    font-size: 4vmin;
-    border-radius: var(--border-radius);
-    width: 100%;
-    height: auto;
-    position: relative;
-    overflow-x: hidden;
-    overflow-y: hidden;
-  "
->
+<table id="player" style="--main-color: #111; --text-color: #fff; --border-radius: 50px; background-color: var(--main-color); color: var(--text-color); font-family: 'ubuntu', Arial, sans-serif; font-size: 4vmin; border-radius: var(--border-radius); width: 100%; height: auto; position: relative; overflow: hidden;">
   <!-- Spotify Logo -->
-  <img
-    src="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg"
-    alt="Spotify Logo"
-    style="
-      width: 20em;
-      max-width: 10%;
-      position: absolute;
-      top: 2em;
-      right: 2em;
-      opacity: 0.6;
-      z-index: 1;
-      height: auto;
-    "
-  />
+  <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" alt="Spotify Logo" style="width: 20em; max-width: 10%; position: absolute; top: 2em; right: 2em; opacity: 0.6; z-index: 1; height: auto;" />
 
   <tr height="100%">
     <td width="20%" align="center">
-      <img
-        id="player-album-art"
-        style="margin: 1em; max-height: 50vmin; border-radius: var(--border-radius);"
-      />
+      <img id="player-album-art" style="margin: 1em; max-height: 50vmin; border-radius: var(--border-radius);" />
     </td>
     <td width="80%">
       <div id="player-status" style="margin: 1em; font-size: 1.2em;"></div>
@@ -50,7 +17,7 @@
           <a id="player-artist-pill" href="" target="_blank" style="color: var(--text-color); background: #333; padding: 0.5em 1em; border-radius: 9999px; text-decoration: none;"></a>
           <a id="player-album-pill" href="" target="_blank" style="color: var(--text-color); background: #333; padding: 0.5em 1em; border-radius: 9999px; text-decoration: none;"></a>
         </div>
-        <div id="player-time" style="position: relative; float: right; top: -0.5em; font-weight: bold; font-size: 1em;"></div>
+        <div id="player-time" style="position: static; float: right; top: -0.5em; font-weight: bold; font-size: 1em;"></div>
         <!-- Spotify-themed progress bar -->
         <div id="player-progress-back" style="background-color: #333; border-radius: 20px; height: 1em; margin-top: 1.5em; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); display: none;">
           <div id="player-progress" style="background: linear-gradient(90deg, #1db954, #1ed760); height: 100%; border-radius: 20px; transition: width 0.3s ease;"></div>
@@ -87,7 +54,6 @@
   /* Add the background blur effect */
   #player {
     position: relative;
-    overflow: hidden;
     --background-image: url(''); /* Placeholder for dynamic background */
     background-color: var(--main-color);
     color: var(--text-color);
@@ -124,7 +90,7 @@
   const serviceHost = "https://spotify.thanuj-usp.workers.dev";
   const spotifyUser = "Pavan Thanuj Upadrasta";
 
-  let songData, progressInterval, previousSongId;
+  let songData, progressInterval;
 
   function updatePlayer() {
     fetch(`${serviceHost}/get-now-playing`)
@@ -140,7 +106,7 @@
         }
 
         songData = data;
-        document.getElementById("player-status").innerHTML = data.is_playing ? `▶️ ${spotifyUser} is now listening to...` : `⏸️ ${spotifyUser} has paused.`;
+        document.getElementById("player-status").innerHTML = data.is_playing ? `▶️ ${spotifyUser} is now listening...` : `⏸️ ${spotifyUser} has paused.`;
 
         // Update song title link
         const songLink = document.getElementById("player-song");
