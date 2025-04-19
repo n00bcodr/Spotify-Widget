@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Now Playing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Variables for easy theming */
+        :root {
+            --main-color: #111;
+            --text-color: #fff;
+            --accent-color: #1db954; /* Spotify Green */
+            --secondary-accent-color: #1ed760;
+            --pill-bg-color: #333;
+            --progress-bg-color: #535353; /* Darker grey for progress background */
+            --border-radius-lg: 12px; /* Slightly less rounded */
+            --border-radius-pill: 50px;
+            --font-family: 'Ubuntu', Arial, sans-serif;
+            --background-image: url(''); /* Placeholder for dynamic background */
+            --blur-intensity: 20px; /* Control blur amount */
+            --overlay-opacity: 0.65; /* Control overlay darkness */
+        }
+
+        /* Reset and base styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow: hidden; /* Prevent scrollbars on the body */
+            font-family: var(--font-family);
+            background-color: transparent;
+            color: var(--text-color);
+            font-size: 14px; /* Set a base font size for better control with em */
+        }
+
+        /* Main player container */
+        .player-container {
+            position: relative; /* Needed for absolute positioning of logo and pseudo-elements */
+            display: flex;
+            align-items: center; /* Vertically center items */
+            width: 100%;
+            min-height: 100px; /* Minimum height */
+            border-radius: var(--border-radius-lg);
+            overflow: hidden; /* Clip content and background */
+            background-color: var(--main-color); /* Fallback - container still needs a base color */
+            z-index: 1;
+            box-sizing: border-box;
+        }
+
+        /* Blurred background using pseudo-element */
+        .player-container::before {
+            content: "";
+            position: absolute;
+            top: calc(-1 * var(--blur-intensity));
+            left: calc(-1 * var(--blur-intensity));
+            right: calc(-1 * var(--blur-intensity));
+            bottom: calc(-1 * var(--blur-intensity));
+            background-image: var(--background-image);
+            background-position: center;
+            background-size: cover;
+            filter: blur(var(--blur-intensity));
+            z-index: -2; /* Behind overlay */
+        }
+
+        /* Dark overlay for readability */
+        .player-container::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, var(--overlay-opacity));
+            z-index: -1; /* Behind content, above blur */
+            border-radius: inherit;
+        }
+
+        /* Spotify Logo - Positioned relative to player-container */
+        .spotify-logo {
+            width: 70px;
+            height: auto;
+            position: absolute; /* Position relative to player-container */
+            top: 10px;
+            right: 12px;
+            opacity: 0.7;
+            z-index: 2; /* Ensure logo is above content and overlay */
+            transition: opacity 0.3s ease;
+        }
+
+        /* Player Content Area */
+        .player-content {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            /* Default state controlled by parent classes */
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 1; /* Ensure content is above background/overlay */
+        }
+
+        /* Album Art Section */
+        .album-art-section {
+            flex: 0 0 auto;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* z-index: 1; Inherited */
+        }
+
+        .album-art {
+            display: block;
+            max-width: 100px;
+            max-height: 100px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Info Section (Song, Artist, Progress) */
+        .info-section {
+            flex: 1 1 auto;
+            padding: 15px 15px 15px 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+             /* z-index: 1; Inherited */
+        }
+
+        .player-status {
+            font-size: 0.9em;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+
+        .player-song {
+            display: block;
+            font-size: 1.25em;
+            font-weight: 700;
+            color: var(--text-color);
+            text-decoration: none;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.2s ease;
+        }
+        .player-song:hover {
+            text-decoration: underline;
+            color: var(--secondary-accent-color);
+        }
+
+        /* Container for pills */
+        .pill-container {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        /* Style for artist/album pills */
+        .info-pill {
+            display: inline-block;
+            color: var(--text-color);
+            background: var(--pill-bg-color);
+            padding: 4px 10px;
+            border-radius: var(--border-radius-pill);
+            text-decoration: none;
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+            transition: background-color 0.2s ease;
+        }
+        .info-pill:hover {
+            background-color: #555;
+        }
+
+        /* Progress Bar Area */
+        .progress-area {
+            padding-top: 5px;
+        }
+
+        .player-time {
+            font-weight: bold;
+            font-size: 0.8em;
+            text-align: right;
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+
+        .player-progress-back {
+            background-color: var(--progress-bg-color);
+            border-radius: var(--border-radius-pill);
+            height: 6px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .player-progress {
+            background: linear-gradient(90deg, var(--accent-color), var(--secondary-accent-color));
+            height: 100%;
+            width: 0%;
+            border-radius: var(--border-radius-pill);
+            transition: width 0.3s linear;
+            box-shadow: 0 0 4px var(--accent-color);
+        }
+
+        /* Message when nothing is playing */
+        .loading-message,
+        .not-playing-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 100px; /* Match container min-height */
+            font-size: 1em;
+            text-align: center;
+            padding: 15px; /* Keep padding for text spacing */
+            box-sizing: border-box;
+            position: absolute;
+            top: 0; left: 0;
+            color: var(--text-color); /* Ensure text is visible */
+            z-index: 1; /* Ensure it's above background pseudo-elements */
+            border-radius: inherit;
+            opacity: 0; /* Hidden by default */
+            visibility: hidden; /* Hidden by default */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        /* Show messages when appropriate */
+        .player-container.loading .loading-message,
+        .player-container.not-playing .not-playing-message {
+            opacity: 1;
+            visibility: visible;
+        }
+
+
+        /* Control player content visibility based on parent state */
+         .player-container.loading .player-content,
+         .player-container.not-playing .player-content {
+              /* Already hidden by default .player-content rule, but keep for clarity */
+              visibility: hidden;
+              opacity: 0;
+         }
+         /* Explicitly show content when playing */
+         .player-container:not(.loading):not(.not-playing) .player-content {
+             visibility: visible;
+             opacity: 1;
+         }
+
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+             body, html {
+                 font-size: 13px;
+             }
+            .player-container {
+                 min-height: 90px;
+            }
+
+            .album-art-section {
+                padding: 10px;
+            }
+
+            .album-art {
+                max-width: 80px;
+                max-height: 80px;
+            }
+
+            .info-section {
+                padding: 10px 10px 10px 0;
+            }
+
+            .player-song {
+                font-size: 1.15em;
+            }
+             .player-status {
+                 font-size: 0.85em;
+             }
+
+            .pill-container {
+                gap: 5px;
+                margin-bottom: 8px;
+            }
+
+             .info-pill {
+                font-size: 0.75em;
+                padding: 3px 8px;
+                max-width: 120px;
+            }
+
+            .player-time {
+                font-size: 0.75em;
+            }
+
+            .spotify-logo {
+                width: 55px;
+                top: 8px;
+                right: 10px;
+            }
+        }
+         @media (max-width: 400px) {
+             body, html {
+                 font-size: 12px;
+             }
+              .player-song {
+                font-size: 1.1em;
+            }
+             .info-pill {
+                 max-width: 100px;
+             }
+             .spotify-logo {
+                 width: 50px;
+                 top: 6px; /* Adjust slightly */
+                 right: 8px; /* Adjust slightly */
+             }
+             .album-art {
+                 max-width: 70px;
+                 max-height: 70px;
+             }
+         }
+
+    </style>
+</head>
+<body>
+    <div id="player-container" class="player-container loading"> <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" alt="Spotify Logo" class="spotify-logo" />
+
+        <div class="loading-message">Loading Spotify data...</div>
+
+        <div class="not-playing-message">
+             <span id="not-playing-text">Not listening to anything right now.</span>
+         </div>
+
+        <div class="player-content">
+            <div class="album-art-section">
+                <img id="player-album-art" src="https://placehold.co/100x100/111/555?text=Load..." alt="Album Art" class="album-art" />
+            </div>
+
+            <div class="info-section">
+                <div id="player-status" class="player-status">Connecting...</div>
+                <a id="player-song" href="#" target="_blank" class="player-song">Song Title</a>
+                <div id="pill-container" class="pill-container">
+                    <a id="player-artist-pill" href="#" target="_blank" class="info-pill">Artist</a>
+                    <a id="player-album-pill" href="#" target="_blank" class="info-pill">Album</a>
+                </div>
+
+                <div class="progress-area">
+                     <div id="player-time" class="player-time">--:-- / --:--</div>
+                     <div id="player-progress-back" class="player-progress-back">
+                        <div id="player-progress" class="player-progress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const serviceHost = "https://spotify.thanuj-usp.workers.dev";
+        const spotifyUser = "Pavan Thanuj Upadrasta";
+        const updateInterval = 10000;
+        const progressTickInterval = 1000;
+
+        // DOM Elements
+        const playerContainer = document.getElementById("player-container");
+        const statusEl = document.getElementById("player-status");
+        const songLinkEl = document.getElementById("player-song");
+        const artistPillEl = document.getElementById("player-artist-pill");
+        const albumPillEl = document.getElementById("player-album-pill");
+        const albumArtEl = document.getElementById("player-album-art");
+        const timeEl = document.getElementById("player-time");
+        const progressEl = document.getElementById("player-progress");
+        const notPlayingTextEl = document.getElementById("not-playing-text");
+
+
+        // State variables
+        let currentSongData = null;
+        let progressIntervalId = null;
+        let updateTimeoutId = null;
+
+        // --- Functions ---
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+        }
+
+        function updateProgressUI() {
+            if (!currentSongData || !currentSongData.item) return;
+
+            const progressMs = currentSongData.progress_ms;
+            const durationMs = currentSongData.item.duration_ms;
+
+            if (durationMs > 0) {
+                const percentage = Math.min((progressMs / durationMs) * 100, 100);
+                progressEl.style.width = `${percentage}%`;
+                timeEl.textContent = `${formatTime(progressMs)} / ${formatTime(durationMs)}`;
+            } else {
+                progressEl.style.width = '0%';
+                timeEl.textContent = formatTime(progressMs);
+            }
+        }
+
+        function startProgressTick() {
+            stopProgressTick();
+            if (currentSongData && currentSongData.is_playing) {
+                 progressIntervalId = setInterval(() => {
+                    if (currentSongData && currentSongData.item) {
+                        currentSongData.progress_ms += progressTickInterval;
+                        if (currentSongData.item.duration_ms && currentSongData.progress_ms > currentSongData.item.duration_ms) {
+                             currentSongData.progress_ms = currentSongData.item.duration_ms;
+                             stopProgressTick();
+                        }
+                        updateProgressUI();
+                    }
+                }, progressTickInterval);
+            }
+        }
+
+        function stopProgressTick() {
+            if (progressIntervalId) {
+                clearInterval(progressIntervalId);
+                progressIntervalId = null;
+            }
+        }
+
+        function updatePlayerUI(data) {
+             // Remove loading state first
+             playerContainer.classList.remove('loading');
+
+            if (!data || !data.item) {
+                // Nothing is playing or error occurred
+                playerContainer.classList.add('not-playing');
+                playerContainer.classList.remove('playing');
+                notPlayingTextEl.textContent = `${spotifyUser} is not listening to anything right now.`;
+                stopProgressTick();
+                currentSongData = null;
+                playerContainer.style.setProperty('--background-image', 'none');
+                return;
+            }
+
+             // We have data, remove not-playing state and add playing state
+             playerContainer.classList.remove('not-playing');
+             playerContainer.classList.add('playing');
+
+
+            // Check if the song is the same to avoid unnecessary DOM updates
+            const isSameSong = currentSongData && currentSongData.item.id === data.item.id;
+
+            currentSongData = data;
+
+            statusEl.textContent = data.is_playing ? `▶️ Listening now...` : `⏸️ Paused`;
+
+            if (!isSameSong) {
+                 songLinkEl.href = data.item.external_urls.spotify || '#';
+                 songLinkEl.textContent = data.item.name || 'Unknown Song';
+
+                 if (data.item.artists && data.item.artists.length > 0) {
+                    artistPillEl.href = data.item.artists[0].external_urls.spotify || '#';
+                    artistPillEl.textContent = `🎤 ${data.item.artists[0].name || 'Unknown Artist'}`;
+                    artistPillEl.style.display = 'inline-block';
+                 } else {
+                     artistPillEl.style.display = 'none';
+                 }
+
+                 if (data.item.album) {
+                    albumPillEl.href = data.item.album.external_urls.spotify || '#';
+                    albumPillEl.textContent = `💽 ${data.item.album.name || 'Unknown Album'}`;
+                    albumPillEl.style.display = 'inline-block';
+                 } else {
+                      albumPillEl.style.display = 'none';
+                 }
+
+                 const imageUrl = data.item.album?.images?.find(img => img.height <= 300)?.url ||
+                                  data.item.album?.images?.[1]?.url ||
+                                  data.item.album?.images?.[0]?.url ||
+                                  'https://placehold.co/100x100/111/555?text=No+Art';
+                 albumArtEl.src = imageUrl;
+                 albumArtEl.alt = `Album art for ${data.item.album?.name || 'Unknown Album'}`;
+                 playerContainer.style.setProperty('--background-image', `url(${imageUrl})`);
+            }
+
+            updateProgressUI();
+
+            if (data.is_playing) {
+                startProgressTick();
+            } else {
+                stopProgressTick();
+            }
+        }
+
+        async function fetchNowPlaying() {
+             try {
+                 const response = await fetch(`${serviceHost}/get-now-playing`);
+                 if (!response.ok) {
+                     let errorBody = null;
+                     try { errorBody = await response.json(); } catch (e) { /* ignore */ }
+                     console.error("API Response Error:", response.status, errorBody);
+                     throw new Error(`HTTP error! status: ${response.status}`);
+                 }
+                 const data = await response.json();
+
+                 if (data.hasOwnProperty("ERROR")) {
+                     updatePlayerUI(null);
+                 } else if (!data || !data.item) {
+                     updatePlayerUI(null);
+                 }
+                 else {
+                     updatePlayerUI(data);
+                 }
+             } catch (error) {
+                 console.error("Error fetching now playing data:", error);
+                 updatePlayerUI(null);
+                 if (!playerContainer.classList.contains('not-playing')) {
+                    statusEl.textContent = "⚠️ Error";
+                 }
+             } finally {
+                 clearTimeout(updateTimeoutId);
+                 updateTimeoutId = setTimeout(fetchNowPlaying, updateInterval);
+             }
+        }
+
+        // --- Initial Load ---
+        setTimeout(fetchNowPlaying, 100);
+
+    </script>
+</body>
+</html>
