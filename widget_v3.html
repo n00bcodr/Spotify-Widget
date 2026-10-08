@@ -76,6 +76,8 @@
   .idle-title { font-weight: 700; font-size: 1.05rem; }
   .idle-sub { font-size: .85rem; color: var(--muted); max-width: 90%; }
   .last { display: none; align-items: center; gap: 10px; margin-top: 8px; padding: 6px 12px 6px 6px; border-radius: 12px; background: var(--pill); text-decoration: none; color: var(--text); max-width: 100%; }
+  .last { transition: transform .2s ease, background .2s ease; }
+  .last:hover { transform: translateY(-3px); background: var(--pill-hover); }
   .last.show { display: flex; }
   .last img { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; }
   .last div { min-width: 0; text-align: left; }
