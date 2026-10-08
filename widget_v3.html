@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Now Playing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --glow: 30, 215, 96;            /* r,g,b of the album colour, updated from the artwork */
+    --text: #fff; --muted: rgba(255,255,255,.68); --pill: rgba(255,255,255,.12); --pill-hover: rgba(255,255,255,.22);
+    --track: rgba(255,255,255,.18); --card: #101014; --overlay: rgba(8,8,12,.62);
+    --accent: #1ed760;
+  }
+  [data-theme="light"] {
+    --text: #15151a; --muted: rgba(21,21,26,.64); --pill: rgba(0,0,0,.07); --pill-hover: rgba(0,0,0,.13);
+    --track: rgba(0,0,0,.12); --card: #f6f6f8; --overlay: rgba(255,255,255,.68); --accent: #17a84a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; font-family: "Ubuntu", system-ui, sans-serif; color: var(--text); }
+  .card { position: relative; height: 100%; min-height: 150px; border-radius: 16px; overflow: hidden; background: var(--card); isolation: isolate; }
+  .bg { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(28px) saturate(1.3); transform: scale(1.1); z-index: -2; transition: background-image .6s ease, opacity .6s ease; opacity: .9; }
+  .card::after { content: ""; position: absolute; inset: 0; background: var(--overlay); z-index: -1; }
+  .glow { position: absolute; width: 60%; height: 140%; left: -10%; top: -20%; background: radial-gradient(closest-side, rgba(var(--glow), .45), transparent); z-index: -1; transition: background .8s ease; }
+
+  .view { position: absolute; inset: 0; display: flex; align-items: center; gap: 18px; padding: 16px 18px; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .5s ease, transform .5s ease, visibility .5s; }
+  .card[data-state="playing"] .v-play, .card[data-state="paused"] .v-play,
+  .card[data-state="idle"] .v-idle, .card[data-state="loading"] .v-load { opacity: 1; visibility: visible; transform: none; }
+
+  /* artwork + vinyl */
+  .art-wrap { position: relative; flex: 0 0 auto; width: clamp(92px, 26vw, 128px); aspect-ratio: 1; }
+  .vinyl { position: absolute; top: 4%; left: 20%; width: 92%; height: 92%; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #222 0 18%, #0c0c0c 19% 100%), repeating-radial-gradient(circle, rgba(255,255,255,.07) 0 1px, transparent 1px 4px); box-shadow: 0 6px 16px rgba(0,0,0,.5); transform: translateX(0); transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+  .vinyl::after { content: ""; position: absolute; inset: 36%; border-radius: 50%; background: rgb(var(--glow)); box-shadow: 0 0 0 4px rgba(0,0,0,.4); }
+  .card[data-state="playing"] .vinyl { transform: translateX(26%); animation: spin 5s linear infinite; }
+  .card[data-state="paused"] .vinyl { transform: translateX(18%); }
+  @keyframes spin { to { transform: translateX(26%) rotate(360deg); } }
+  .art { position: relative; width: 100%; height: 100%; border-radius: 12px; object-fit: cover; display: block; box-shadow: 0 10px 26px rgba(var(--glow), .55), 0 4px 10px rgba(0,0,0,.4); background: #222; }
+  .art-wrap { margin-right: 14%; }
+
+  .info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .eq i { width: 3px; height: 4px; background: var(--accent); border-radius: 2px; }
+  .card[data-state="playing"] .eq i { animation: eq 1s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -.3s !important; } .eq i:nth-child(3) { animation-delay: -.6s !important; } .eq i:nth-child(4) { animation-delay: -.9s !important; }
+  @keyframes eq { 0%,100% { height: 3px; } 50% { height: 14px; } }
+  .card[data-state="paused"] .eq i { height: 6px; opacity: .6; }
+  .logo { margin-left: auto; width: 20px; height: 20px; fill: var(--accent); flex: none; }
+
+  .title-wrap { overflow: hidden; white-space: nowrap; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+  .title { display: inline-block; font-size: clamp(1.05rem, 4.2vw, 1.4rem); font-weight: 700; color: var(--text); text-decoration: none; padding-right: 2.5rem; }
+  .title:hover { color: var(--accent); }
+  .title.marquee { animation: marquee 12s linear infinite; }
+  .title-wrap:hover .title.marquee { animation-play-state: paused; }
+  @keyframes marquee { 0%, 12% { transform: translateX(0); } 88%, 100% { transform: translateX(var(--shift, -40%)); } }
+
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 10px; border-radius: 999px; background: var(--pill); color: var(--text); font-size: .8rem; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s; }
+  .pill:hover { background: var(--pill-hover); }
+  .pill svg { width: 12px; height: 12px; fill: currentColor; flex: none; opacity: .8; }
+  .badge { font-size: .68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--pill); color: var(--muted); }
+
+  .progress { margin-top: 4px; }
+  .bar { height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent), rgb(var(--glow))); box-shadow: 0 0 8px rgba(var(--glow), .6); }
+  .times { display: flex; justify-content: space-between; margin-top: 4px; font-size: .72rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .open { margin-left: auto; font-weight: 500; color: var(--accent); text-decoration: none; }
+  .open:hover { text-decoration: underline; }
+
+  /* idle + loading */
+  .v-idle, .v-load { justify-content: center; text-align: center; flex-direction: column; gap: 6px; }
+  .idle-icon { width: 40px; height: 40px; fill: var(--accent); opacity: .9; }
+  .idle-title { font-weight: 700; font-size: 1.05rem; }
+  .idle-sub { font-size: .85rem; color: var(--muted); max-width: 90%; }
+  .last { display: none; align-items: center; gap: 10px; margin-top: 8px; padding: 6px 12px 6px 6px; border-radius: 12px; background: var(--pill); text-decoration: none; color: var(--text); max-width: 100%; }
+  .last.show { display: flex; }
+  .last img { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; }
+  .last div { min-width: 0; text-align: left; }
+  .last b { display: block; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .last span { display: block; font-size: .75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dots span { display: inline-block; width: 8px; height: 8px; margin: 0 3px; border-radius: 50%; background: var(--accent); animation: bounce 1s infinite ease-in-out; }
+  .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: scale(.5); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+
+  @media (max-width: 420px) { .view { gap: 12px; padding: 12px; } .art-wrap { margin-right: 10%; } .pill { font-size: .74rem; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="card" class="card" data-state="loading">
+  <div class="bg" id="bg"></div><div class="glow"></div>
+
+  <div class="view v-load"><div class="dots"><span></span><span></span><span></span></div><div class="idle-sub">Tuning in…</div></div>
+
+  <div class="view v-idle">
+    <svg class="idle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.52 17.34a.75.75 0 0 1-1.03.25c-2.82-1.72-6.36-2.11-10.54-1.16a.75.75 0 1 1-.33-1.46c4.57-1.04 8.5-.59 11.65 1.34.35.22.46.68.25 1.03zm1.47-3.26a.94.94 0 0 1-1.29.31c-3.23-1.99-8.15-2.57-11.97-1.4a.94.94 0 1 1-.55-1.8c4.36-1.32 9.78-.68 13.5 1.6.44.27.58.85.31 1.29zm.13-3.4C15.24 8.4 8.87 8.2 5.18 9.32a1.13 1.13 0 1 1-.65-2.16c4.23-1.28 11.26-1.04 15.7 1.6a1.13 1.13 0 1 1-1.15 1.94z"/></svg>
+    <div class="idle-title">Nothing playing right now</div>
+    <div class="idle-sub">The speakers are quiet. Check out On Repeat below.</div>
+    <a class="last" id="last" target="_blank" rel="noopener"><img id="last-art" alt=""><div><b id="last-title"></b><span id="last-artist"></span></div></a>
+  </div>
+
+  <div class="view v-play">
+    <div class="art-wrap"><div class="vinyl"></div><img class="art" id="art" alt="Album art"></div>
+    <div class="info">
+      <div class="status">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span id="status">Listening now</span>
+        <svg class="logo" viewBox="0 0 24 24" aria-label="Spotify"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.52 17.34a.75.75 0 0 1-1.03.25c-2.82-1.72-6.36-2.11-10.54-1.16a.75.75 0 1 1-.33-1.46c4.57-1.04 8.5-.59 11.65 1.34.35.22.46.68.25 1.03zm1.47-3.26a.94.94 0 0 1-1.29.31c-3.23-1.99-8.15-2.57-11.97-1.4a.94.94 0 1 1-.55-1.8c4.36-1.32 9.78-.68 13.5 1.6.44.27.58.85.31 1.29zm.13-3.4C15.24 8.4 8.87 8.2 5.18 9.32a1.13 1.13 0 1 1-.65-2.16c4.23-1.28 11.26-1.04 15.7 1.6a1.13 1.13 0 1 1-1.15 1.94z"/></svg>
+      </div>
+      <div class="title-wrap" id="tw"><a class="title" id="title" target="_blank" rel="noopener" href="#">Song</a></div>
+      <div class="meta">
+        <a class="pill" id="artist" target="_blank" rel="noopener" href="#"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 5v1h16v-1c0-3.3-4.7-5-8-5z"/></svg><span></span></a>
+        <a class="pill" id="album" target="_blank" rel="noopener" href="#"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 12.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg><span></span></a>
+        <span class="badge" id="explicit" hidden>E</span>
+        <span class="badge" id="year" hidden></span>
+      </div>
+      <div class="progress">
+        <div class="bar"><div class="fill" id="fill"></div></div>
+        <div class="times"><span id="cur">0:00</span><a class="open" id="open" target="_blank" rel="noopener" href="#">Open in Spotify &rarr;</a><span id="dur">0:00</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var HOST = "https://spotify.thanuj-usp.workers.dev", POLL = 10000;
+  var $ = function (id) { return document.getElementById(id); };
+  var card = $("card"), cur = null, base = 0, t0 = 0, raf = null, timer = null, lastId = null;
+
+  // ---- theme (same origin as the page, so read it directly; also accept postMessage / ?theme=) ----
+  function setTheme(t) { if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); }
+  (function initTheme() {
+    var q = new URLSearchParams(location.search).get("theme"), t = q;
+    try { if (!t) t = window.parent.document.documentElement.getAttribute("data-theme"); } catch (e) {}
+    if (!t) t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    setTheme(t);
+    window.addEventListener("message", function (e) { if (e.data && e.data.type === "theme") setTheme(e.data.theme); });
+  })();
+
+  function fmt(ms) { var s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  function state(s) { card.setAttribute("data-state", s); }
+
+  function avgColor(img) {
+    try {
+      var c = document.createElement("canvas"); c.width = c.height = 8;
+      var x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, 8, 8);
+      var d = x.getImageData(0, 0, 8, 8).data, r = 0, g = 0, b = 0, n = 0;
+      for (var i = 0; i < d.length; i += 4) { var mx = Math.max(d[i], d[i+1], d[i+2]), mn = Math.min(d[i], d[i+1], d[i+2]); var w = 1 + (mx - mn) / 64; r += d[i] * w; g += d[i+1] * w; b += d[i+2] * w; n += w; }
+      r = r / n; g = g / n; b = b / n;
+      var m = Math.max(r, g, b); if (m < 90) { var k = 90 / (m || 1); r *= k; g *= k; b *= k; }   // keep the glow visible on dark covers
+      document.documentElement.style.setProperty("--glow", Math.round(r) + "," + Math.round(g) + "," + Math.round(b));
+    } catch (e) { /* cross-origin image: keep the default green */ }
+  }
+
+  function tick() {
+    if (!cur || !cur.item) return;
+    var dur = cur.item.duration_ms, p = cur.is_playing ? Math.min(base + (Date.now() - t0), dur) : base;
+    $("fill").style.width = (dur ? (p / dur) * 100 : 0) + "%";
+    $("cur").textContent = fmt(p);
+    raf = cur.is_playing ? requestAnimationFrame(tick) : null;
+  }
+
+  function marquee() {
+    var t = $("title"), w = $("tw"); t.classList.remove("marquee");
+    requestAnimationFrame(function () {
+      var over = t.scrollWidth - w.clientWidth;
+      if (over > 8) { t.style.setProperty("--shift", "-" + (over + 8) + "px"); t.classList.add("marquee"); }
+    });
+  }
+
+  function show(d) {
+    var it = d.item, al = it.album || {}, ar = (it.artists && it.artists[0]) || {};
+    cur = d; base = d.progress_ms; t0 = Date.now();
+    var img = (al.images || []).filter(function (i) { return i.width >= 300; }).pop() || (al.images || [])[0] || {};
+    if (it.id !== lastId) {
+      lastId = it.id;
+      $("title").textContent = it.name; $("title").href = (it.external_urls || {}).spotify || "#";
+      $("artist").querySelector("span").textContent = ar.name || "Unknown artist"; $("artist").href = ((ar.external_urls || {}).spotify) || "#";
+      $("album").querySelector("span").textContent = al.name || "Unknown album"; $("album").href = ((al.external_urls || {}).spotify) || "#";
+      $("open").href = (it.external_urls || {}).spotify || "#";
+      $("explicit").hidden = !it.explicit;
+      var y = (al.release_date || "").slice(0, 4); $("year").hidden = !y; $("year").textContent = y;
+      $("dur").textContent = fmt(it.duration_ms);
+      var a = $("art"); a.crossOrigin = "anonymous"; a.onload = function () { avgColor(a); }; a.src = img.url || ""; $("bg").style.backgroundImage = img.url ? "url(" + img.url + ")" : "none";
+      marquee();
+      try { localStorage.setItem("np-last", JSON.stringify({ t: it.name, a: ar.name, u: (it.external_urls || {}).spotify, i: img.url })); } catch (e) {}
+    }
+    $("status").textContent = d.is_playing ? "Listening now" : "Paused";
+    state(d.is_playing ? "playing" : "paused");
+    cancelAnimationFrame(raf); tick();
+  }
+
+  function idle() {
+    cur = null; lastId = null; cancelAnimationFrame(raf);
+    try {
+      var l = JSON.parse(localStorage.getItem("np-last") || "null");
+      if (l && l.t) { var e = $("last"); e.classList.add("show"); e.href = l.u || "#"; $("last-art").src = l.i || ""; $("last-title").textContent = "Last played: " + l.t; $("last-artist").textContent = l.a || ""; }
+    } catch (e) {}
+    state("idle");
+  }
+
+  function load() {
+    clearTimeout(timer);
+    if (document.hidden) { timer = setTimeout(load, POLL); return; }
+    fetch(HOST + "/get-now-playing", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { if (!d || !d.item || d.ERROR) idle(); else show(d); })
+      .catch(function () { if (!cur) idle(); })
+      .then(function () { timer = setTimeout(load, POLL); });
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
+  load();
+})();
+</script>
+</body>
+</html>
