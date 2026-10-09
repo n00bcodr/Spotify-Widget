@@ -27,6 +27,7 @@
   .bg { position: absolute; inset: -30px; background-size: cover; background-position: center; filter: blur(28px) saturate(1.3); transform: scale(1.1); z-index: -2; transition: background-image .6s ease, opacity .6s ease; opacity: .9; }
   .card::after { content: ""; position: absolute; inset: 0; background: var(--overlay); z-index: -1; }
   .glow { position: absolute; width: 60%; height: 140%; left: -10%; top: -20%; background: radial-gradient(closest-side, rgba(var(--glow), .45), transparent); z-index: -1; transition: background .8s ease; }
+  .card[data-state="idle"] .glow, .card[data-state="loading"] .glow { left: 20%; width: 60%; top: -20%; height: 140%; opacity: .75; }
 
   .view { position: absolute; inset: 0; display: flex; align-items: center; gap: 18px; padding: 16px 18px; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .5s ease, transform .5s ease, visibility .5s; }
   .card[data-state="playing"] .v-play, .card[data-state="paused"] .v-play,
